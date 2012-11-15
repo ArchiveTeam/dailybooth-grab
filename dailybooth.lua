@@ -63,18 +63,21 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       -- further API urls
       -- pictures
       picture_count = json["picture_count"]
+      picture_count = math.min(picture_count, 100000) -- sanity check
       for p=0, math.ceil(picture_count / 100)-1, 1 do
         table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/pictures.json?limit=100&page="..p) })
       end
 
       -- followers
       followers_count = json["followers_count"]
+      followers_count = math.min(followers_count, 500000) -- sanity check
       for p=0, math.ceil(followers_count / 500)-1, 1 do
         table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/followers.json?limit=500&page="..p) })
       end
 
       -- following
       following_count = json["following_count"]
+      following_count = math.min(following_count, 500000) -- sanity check
       for p=0, math.ceil(following_count / 500)-1, 1 do
         table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/following.json?limit=500&page="..p) })
       end
@@ -150,6 +153,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       for i, pic in ipairs(json) do
         -- comments
         local comment_count = pic["comment_count"]
+        comment_count = math.min(comment_count, 100000) -- sanity check
         for p=0, math.ceil(comment_count / 500)-1, 1 do
           table.insert(urls, { url=("http://api.dailybooth.com/v1/pictures/"..pic["picture_id"].."/comments.json?limit=500&page="..p) })
         end
