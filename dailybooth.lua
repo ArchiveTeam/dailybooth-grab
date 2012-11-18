@@ -62,7 +62,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
 
       -- further API urls
       -- pictures
-      picture_count = json["picture_count"]
+      picture_count = tonumber(json["picture_count"])
       if picture_count > 2147483647 then
         picture_count = 0
       end
@@ -72,7 +72,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
 
       -- followers
-      followers_count = json["followers_count"]
+      followers_count = tonumber(json["followers_count"])
       if followers_count > 2147483647 then
         followers_count = 0
       end
@@ -82,7 +82,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
 
       -- following
-      following_count = json["following_count"]
+      following_count = tonumber(json["following_count"])
       if following_count > 2147483647 then
         following_count = 0
       end
@@ -161,7 +161,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     if json then
       for i, pic in ipairs(json) do
         -- comments
-        local comment_count = pic["comment_count"]
+        local comment_count = tonumber(pic["comment_count"])
         if comment_count > 2147483647 then
           comment_count = 0
         end
