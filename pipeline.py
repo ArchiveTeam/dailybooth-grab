@@ -7,7 +7,7 @@ import glob
 import json
 from distutils.version import StrictVersion
 
-from tornado import gen
+from tornado import gen, ioloop
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 
 import seesaw
@@ -25,7 +25,7 @@ if StrictVersion(seesaw.__version__) < StrictVersion("0.0.5"):
 
 
 USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27"
-VERSION = "20121118.01"
+VERSION = "20121130.01"
 
 class ConditionalTask(Task):
   def __init__(self, condition_function, inner_task):
@@ -60,11 +60,14 @@ class GetUsernameForId(SimpleTask):
 
   def enqueue(self, item):
     self.start_item(item)
+    self.request(self, item)
+
+  def request(self, item):
     user_id = item["item_name"]
 
     http_client = AsyncHTTPClient()
     item.log_output("Finding username for ID %s: " % user_id, full_line=False)
-    api_url = "http://api.dailybooth.com/v1/users/%s.json" % user_id
+    api_url = "https://api.dailybooth.com/v1/users/%s.json" % user_id
 
     http_client.fetch(api_url, functools.partial(self.handle_response, item), user_agent=USER_AGENT)
 
@@ -76,6 +79,10 @@ class GetUsernameForId(SimpleTask):
       item["dailybooth_username"] = username
       item["dailybooth_data"] = data
       self.complete_item(item)
+
+    elif response.code == 503:
+      item.log_output("Rate limited. Waiting for 30 seconds...")
+      ioloop.timeout(datetime.timedelta(seconds=30), functools.partial(self.request, item))
 
     else:
       item.log_output("not found (response code %d).\n" % response.code, full_line=False)
@@ -151,6 +158,7 @@ pipeline = Pipeline(
         "-U", USER_AGENT,
         "-nv",
         "-o", ItemInterpolation("%(item_dir)s/wget.log"),
+        "--no-check-certificate",
         "--directory-prefix", ItemInterpolation("%(item_dir)s/files"),
         "--force-directories",
         "--adjust-extension",
@@ -159,14 +167,14 @@ pipeline = Pipeline(
         "--lua-script", "dailybooth.lua",
         "--reject-regex", "api.mixpanel.com|www.facebook.com|platform.twitter.com",
         "--timeout", "30",
-        "--tries", "10",
+        "--tries", "20",
         "--waitretry", "5",
         "--warc-file", ItemInterpolation("%(item_dir)s/%(warc_file_base)s"),
         "--warc-header", "operator: Archive Team",
         "--warc-header", "dailybooth-dld-script-version: " + VERSION,
         "--warc-header", ItemInterpolation("dailybooth-user-id: %(item_name)s"),
         "--warc-header", ItemInterpolation("dailybooth-username: %(dailybooth_username)s"),
-        ItemInterpolation("http://api.dailybooth.com/v1/users/%(item_name)s.json")
+        ItemInterpolation("https://api.dailybooth.com/v1/users/%(item_name)s.json")
       ],
       max_tries = 2,
       accept_on_exit_code = [ 0, 4, 6, 8 ],

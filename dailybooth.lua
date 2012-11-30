@@ -54,7 +54,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   -- API: the user data
-  local user_id = string.match(url, "^http://api%.dailybooth%.com/v1/users/(%d+)%.json$")
+  local user_id = string.match(url, "^https://api%.dailybooth%.com/v1/users/(%d+)%.json$")
   if user_id then
     local json = load_json_file(file)
     if json and json["username"] then
@@ -68,7 +68,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       picture_count = math.min(picture_count, 100000) -- sanity check
       for p=0, math.ceil(picture_count / 100)-1, 1 do
-        table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/pictures.json?limit=100&page="..p) })
+        table.insert(urls, { url=("https://api.dailybooth.com/v1/users/"..user_id.."/pictures.json?limit=100&page="..p) })
       end
 
       -- followers
@@ -78,7 +78,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       followers_count = math.min(followers_count, 500000) -- sanity check
       for p=0, math.ceil(followers_count / 500)-1, 1 do
-        table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/followers.json?limit=500&page="..p) })
+        table.insert(urls, { url=("https://api.dailybooth.com/v1/users/"..user_id.."/followers.json?limit=500&page="..p) })
       end
 
       -- following
@@ -88,17 +88,17 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       following_count = math.min(following_count, 500000) -- sanity check
       for p=0, math.ceil(following_count / 500)-1, 1 do
-        table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/following.json?limit=500&page="..p) })
+        table.insert(urls, { url=("https://api.dailybooth.com/v1/users/"..user_id.."/following.json?limit=500&page="..p) })
       end
 
       -- favorites (number unknown)
-      table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/favorites.json?limit=100&page=0") })
+      table.insert(urls, { url=("https://api.dailybooth.com/v1/users/"..user_id.."/favorites.json?limit=100&page=0") })
 
       -- activity (number unknown)
-      table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/activity.json?limit=100&page=0") })
+      table.insert(urls, { url=("https://api.dailybooth.com/v1/users/"..user_id.."/activity.json?limit=100&page=0") })
 
       -- username-to-id mapping
-      table.insert(urls, { url=("http://api.dailybooth.com/v1/users.json?username="..username) })
+      table.insert(urls, { url=("https://api.dailybooth.com/v1/users.json?username="..username) })
 
 
       -- store user data
@@ -155,7 +155,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   -- API: the pictures list
-  local user_id = string.match(url, "^http://api%.dailybooth%.com/v1/users/(%d+)%/pictures%.json")
+  local user_id = string.match(url, "^https://api%.dailybooth%.com/v1/users/(%d+)%/pictures%.json")
   if user_id then
     local json = load_json_file(file)
     if json then
@@ -167,7 +167,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
         comment_count = math.min(comment_count, 100000) -- sanity check
         for p=0, math.ceil(comment_count / 500)-1, 1 do
-          table.insert(urls, { url=("http://api.dailybooth.com/v1/pictures/"..pic["picture_id"].."/comments.json?limit=500&page="..p) })
+          table.insert(urls, { url=("https://api.dailybooth.com/v1/pictures/"..pic["picture_id"].."/comments.json?limit=500&page="..p) })
         end
 
         -- picture images
@@ -187,7 +187,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   -- API: the followers list
-  local user_id = string.match(url, "^http://api%.dailybooth%.com/v1/users/(%d+)%/followers%.json")
+  local user_id = string.match(url, "^https://api%.dailybooth%.com/v1/users/(%d+)%/followers%.json")
   if user_id then
     local json = load_json_file(file)
     if json then
@@ -196,7 +196,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   -- API: the following list
-  local user_id = string.match(url, "^http://api%.dailybooth%.com/v1/users/(%d+)%/following%.json")
+  local user_id = string.match(url, "^https://api%.dailybooth%.com/v1/users/(%d+)%/following%.json")
   if user_id then
     local json = load_json_file(file)
     if json then
@@ -205,27 +205,27 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   -- API: the favorites list
-  local user_id, per_page, page = string.match(url, "^http://api%.dailybooth%.com/v1/users/(%d+)%/favorites%.json%?limit=(%d+)%&page=(%d+)$")
+  local user_id, per_page, page = string.match(url, "^https://api%.dailybooth%.com/v1/users/(%d+)%/favorites%.json%?limit=(%d+)%&page=(%d+)$")
   if user_id then
     local json = load_json_file(file)
     if json then
       -- number of favorites is not given, so we continue until we reach an empty page
       -- (note: the number of pictures on a page isn't always equal to per_page)
       if (#json > 0) then
-        table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/favorites.json?limit="..per_page.."&page="..(page + 1)) })
+        table.insert(urls, { url=("https://api.dailybooth.com/v1/users/"..user_id.."/favorites.json?limit="..per_page.."&page="..(page + 1)) })
       end
     end
   end
 
   -- API: the activity list
-  local user_id, per_page, page = string.match(url, "^http://api%.dailybooth%.com/v1/users/(%d+)%/activity%.json%?limit=(%d+)%&page=(%d+)$")
+  local user_id, per_page, page = string.match(url, "^https://api%.dailybooth%.com/v1/users/(%d+)%/activity%.json%?limit=(%d+)%&page=(%d+)$")
   if user_id then
     local json = load_json_file(file)
     if json then
       -- number of activities is not given, so we continue until we reach an empty page
       -- (note: the number of pictures on a page isn't always equal to per_page)
       if (#json > 0) then
-        table.insert(urls, { url=("http://api.dailybooth.com/v1/users/"..user_id.."/activity.json?limit="..per_page.."&page="..(page + 1)) })
+        table.insert(urls, { url=("https://api.dailybooth.com/v1/users/"..user_id.."/activity.json?limit="..per_page.."&page="..(page + 1)) })
       end
     end
   end
@@ -251,5 +251,16 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   return urls
+end
+
+wget.callbacks.httploop_result = function(url, err, http_stat)
+  if string.match(url.url, "https://api") and http_stat.statcode == 503 then
+    -- try again
+    print "Rate limited. Waiting for 120 seconds..."
+    os.execute("sleep 120") -- 
+    return wget.actions.CONTINUE
+  else
+    return wget.actions.NOTHING
+  end
 end
 
