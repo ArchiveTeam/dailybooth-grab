@@ -254,10 +254,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
 end
 
 wget.callbacks.httploop_result = function(url, err, http_stat)
-  if string.match(url.url, "https://api") and http_stat.statcode == 503 then
+  if http_stat.statcode == 503 and string.match(url.url, "https://api") then
     -- try again
-    print "Rate limited. Waiting for 120 seconds..."
-    os.execute("sleep 120") -- 
+    io.stdout:write("\nRate limited. Waiting for 120 seconds...\n")
+    io.stdout:flush()
+    os.execute("sleep 120")
     return wget.actions.CONTINUE
   else
     return wget.actions.NOTHING

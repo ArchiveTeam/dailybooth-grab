@@ -25,7 +25,7 @@ if StrictVersion(seesaw.__version__) < StrictVersion("0.0.5"):
 
 
 USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27"
-VERSION = "20121130.01"
+VERSION = "20121130.02"
 
 class ConditionalTask(Task):
   def __init__(self, condition_function, inner_task):
@@ -60,7 +60,7 @@ class GetUsernameForId(SimpleTask):
 
   def enqueue(self, item):
     self.start_item(item)
-    self.request(self, item)
+    self.request(item)
 
   def request(self, item):
     user_id = item["item_name"]
@@ -69,7 +69,7 @@ class GetUsernameForId(SimpleTask):
     item.log_output("Finding username for ID %s: " % user_id, full_line=False)
     api_url = "https://api.dailybooth.com/v1/users/%s.json" % user_id
 
-    http_client.fetch(api_url, functools.partial(self.handle_response, item), user_agent=USER_AGENT)
+    http_client.fetch(api_url, functools.partial(self.handle_response, item), user_agent=USER_AGENT, validate_cert=False)
 
   def handle_response(self, item, response):
     if response.code == 200:
@@ -84,9 +84,13 @@ class GetUsernameForId(SimpleTask):
       item.log_output("Rate limited. Waiting for 30 seconds...")
       ioloop.timeout(datetime.timedelta(seconds=30), functools.partial(self.request, item))
 
-    else:
+    elif response.code == 404:
       item.log_output("not found (response code %d).\n" % response.code, full_line=False)
       self.complete_item(item)
+
+    else:
+      item.log_output("unknown error (response code %d).\n" % response.code, full_line=False)
+      self.fail_item(item)
 
 class PrepareDirectories(SimpleTask):
   def __init__(self):
