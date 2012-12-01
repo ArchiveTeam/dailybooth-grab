@@ -82,7 +82,7 @@ class GetUsernameForId(SimpleTask):
 
     elif response.code == 503:
       item.log_output("Rate limited. Waiting for 30 seconds...")
-      ioloop.timeout(datetime.timedelta(seconds=30), functools.partial(self.request, item))
+      ioloop.IOLoop.instance().add_timeout(datetime.timedelta(seconds=30), functools.partial(self.request, item))
 
     elif response.code == 404:
       item.log_output("not found (response code %d).\n" % response.code, full_line=False)
