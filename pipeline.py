@@ -141,6 +141,25 @@ def calculate_item_id(item):
   else:
     return None
 
+class CurlUpload(ExternalProcess):
+  def __init__(self, target, filename):
+    args = [
+      "curl",
+      "--fail",
+      "--output", "/dev/null",
+      "--connect-timeout", "60",
+      "--speed-limit", "1",        # minimum upload speed 1B/s
+      "--speed-time", "900",       # stop if speed < speed-limit for 900 seconds
+      "--header", "X-Curl-Limits: inf,1,900",
+      "--write-out", "Upload server: %{url_effective}\\n",
+      "--location",
+      "--upload-file", filename,
+      target
+    ]
+    ExternalProcess.__init__(self, "CurlUpload",
+        args = args,
+        max_tries = None)
+
 
 
 project = Project(
@@ -193,19 +212,25 @@ pipeline = Pipeline(
   ),
   MoveFiles(),
   ConditionalTask(lambda item: ("dailybooth_username" in item),
-    LimitConcurrent(NumberConfigValue(min=1, max=4, default="1", name="shared:rsync_threads", title="Rsync threads", description="The maximum number of concurrent uploads."),
-      RsyncUpload(
-        target = ConfigInterpolation("fos.textfiles.com::alardland/warrior/dailybooth/%s/", downloader),
-        target_source_path = ItemInterpolation("%(data_dir)s/"),
-        files = [
-          ItemInterpolation("%(warc_file_base)s.warc.gz")
-        ],
-        extra_args = [
-          "--partial",
-          "--partial-dir", ".rsync-tmp"
-        ]
+    LimitConcurrent(NumberConfigValue(min=1, max=6, default="2", name="shared:upload_threads", title="Upload threads", description="The maximum number of concurrent uploads."),
+      CurlUpload(
+        ConfigInterpolation("http://tracker.archiveteam.org/dailybooth/upload/%s/", downloader),
+        ItemInterpolation("%(data_dir)s/%(warc_file_base)s.warc.gz")
       ),
     ),
+#   LimitConcurrent(NumberConfigValue(min=1, max=4, default="1", name="shared:rsync_threads", title="Rsync threads", description="The maximum number of concurrent uploads."),
+#     RsyncUpload(
+#       target = ConfigInterpolation("fos.textfiles.com::alardland/warrior/dailybooth/%s/", downloader),
+#       target_source_path = ItemInterpolation("%(data_dir)s/"),
+#       files = [
+#         ItemInterpolation("%(warc_file_base)s.warc.gz")
+#       ],
+#       extra_args = [
+#         "--partial",
+#         "--partial-dir", ".rsync-tmp"
+#       ]
+#     ),
+#   ),
   ),
   SendDoneToTracker(
     tracker_url = "http://tracker.archiveteam.org/dailybooth",
