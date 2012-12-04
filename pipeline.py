@@ -189,7 +189,7 @@ pipeline = Pipeline(
         "--page-requisites", "--span-hosts",
         "--lua-script", "dailybooth.lua",
         "--reject-regex", "api.mixpanel.com|www.facebook.com|platform.twitter.com",
-        "--timeout", "30",
+        "--timeout", "60",
         "--tries", "20",
         "--waitretry", "5",
         "--warc-file", ItemInterpolation("%(item_dir)s/%(warc_file_base)s"),
