@@ -260,6 +260,10 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     io.stdout:flush()
     os.execute("sleep 120")
     return wget.actions.CONTINUE
+  elseif http_stat.statcode == 504 then
+    -- gateway timeout, retry
+    os.execute("sleep 10")
+    return wget.actions.CONTINUE
   else
     return wget.actions.NOTHING
   end
