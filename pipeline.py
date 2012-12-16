@@ -25,7 +25,7 @@ if StrictVersion(seesaw.__version__) < StrictVersion("0.0.10"):
 
 
 USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27"
-VERSION = "20121205.02"
+VERSION = "20121216.01"
 
 class ConditionalTask(Task):
   def __init__(self, condition_function, inner_task):
@@ -54,31 +54,38 @@ class ConditionalTask(Task):
   def __str__(self):
     return "Conditional(" + str(self.inner_task) + ")"
 
-class GetUsernameForId(SimpleTask):
+class GetIdForUsername(SimpleTask):
   def __init__(self):
-    SimpleTask.__init__(self, "GetUsernameForId")
+    SimpleTask.__init__(self, "GetIdForUsername")
 
   def enqueue(self, item):
     self.start_item(item)
     self.request(item)
 
   def request(self, item):
-    user_id = item["item_name"]
+    user_name = item["item_name"]
 
     http_client = AsyncHTTPClient()
-    item.log_output("Finding username for ID %s: " % user_id, full_line=False)
-    api_url = "https://api.dailybooth.com/v1/users/%s.json" % user_id
+    item.log_output("Finding ID for username %s: " % user_name, full_line=False)
+    api_url = "http://dailybooth.com/%s" % user_name
 
     http_client.fetch(api_url, functools.partial(self.handle_response, item), user_agent=USER_AGENT, validate_cert=False)
 
   def handle_response(self, item, response):
     if response.code == 200:
-      data = json.loads(response.body)
-      username = data["username"]
-      item.log_output("'%s'\n" % username, full_line=False)
-      item["dailybooth_username"] = username
-      item["dailybooth_data"] = data
-      self.complete_item(item)
+      html = response.body
+
+      user_id = re.search(r'"follow_user not_following disabled big".+data-user_id="([0-9]+)"', html)
+
+      if user_id:
+        user_id = user_id.group(1)
+        item.log_output("'%s'\n" % user_id, full_line=False)
+        item["dailybooth_user_id"] = user_id
+        self.complete_item(item)
+
+      else:
+        item.log_output("private or not found.\n", full_line=False)
+        self.complete_item(item)
 
     elif response.code == 503:
       item.log_output("Rate limited. Waiting for 30 seconds...")
@@ -105,14 +112,14 @@ class PrepareDirectories(SimpleTask):
 
     os.makedirs(dirname + "/files")
 
-    if "dailybooth_username" in item:
-      username = item["dailybooth_username"]
+    if "dailybooth_user_id" in item:
+      user_id = item["dailybooth_user_id"]
     else:
-      username = "notfound"
-    user_id = item_name
+      user_id = "notfound"
+    username = item_name
 
     item["item_dir"] = dirname
-    item["warc_file_base"] = "dailybooth.com-user-%s-%s-%s" % (username, user_id, time.strftime("%Y%m%d-%H%M%S"))
+    item["warc_file_base"] = "dailybooth.com-2-user-%s-%s-%s" % (username, user_id, time.strftime("%Y%m%d-%H%M%S"))
 
     open("%(item_dir)s/%(warc_file_base)s.warc.gz" % item, "w").close()
 
@@ -138,6 +145,8 @@ def calculate_item_id(item):
     d["followers_count"] = dd["followers_count"]
     d["following_count"] = dd["following_count"]
     return d
+  elif "dailybooth_user_id" in item:
+    return item["dailybooth_user_id"]
   else:
     return None
 
@@ -174,9 +183,9 @@ project = Project(
 
 pipeline = Pipeline(
   GetItemFromTracker("http://tracker.archiveteam.org/dailybooth", downloader, VERSION),
-  GetUsernameForId(),
+  GetIdForUsername(),
   PrepareDirectories(),
-  ConditionalTask(lambda item: ("dailybooth_username" in item),
+  ConditionalTask(lambda item: ("dailybooth_user_id" in item),
     WgetDownload([ "./wget-lua",
         "-U", USER_AGENT,
         "-nv",
@@ -187,7 +196,7 @@ pipeline = Pipeline(
         "--adjust-extension",
         "-e", "robots=off",
         "--page-requisites", "--span-hosts",
-        "--lua-script", "dailybooth.lua",
+        "--lua-script", "dailybooth-noapi.lua",
         "--reject-regex", "api.mixpanel.com|www.facebook.com|platform.twitter.com",
         "--timeout", "60",
         "--tries", "20",
@@ -195,13 +204,19 @@ pipeline = Pipeline(
         "--warc-file", ItemInterpolation("%(item_dir)s/%(warc_file_base)s"),
         "--warc-header", "operator: Archive Team",
         "--warc-header", "dailybooth-dld-script-version: " + VERSION,
-        "--warc-header", ItemInterpolation("dailybooth-user-id: %(item_name)s"),
-        "--warc-header", ItemInterpolation("dailybooth-username: %(dailybooth_username)s"),
-        ItemInterpolation("https://api.dailybooth.com/v1/users/%(item_name)s.json")
+        "--warc-header", ItemInterpolation("dailybooth-user-id: %(dailybooth_user_id)s"),
+        "--warc-header", ItemInterpolation("dailybooth-username: %(item_name)s"),
+        ItemInterpolation("http://dailybooth.com/%(item_name)s")
       ],
       max_tries = 2,
       accept_on_exit_code = [ 0, 4, 6, 8 ],
-    )
+    ),
+  ),
+  ConditionalTask(lambda item: ("dailybooth_user_id" in item),
+    ExternalProcess("ExtractUsernames",
+      ["./extract-usernames.py",
+       ItemInterpolation("%(item_dir)s/%(warc_file_base)s.warc.gz"),
+       ItemInterpolation("%(data_dir)s/%(warc_file_base)s.usernames.txt")])
   ),
   PrepareStatsForTracker(
     defaults = { "downloader": downloader, "version": VERSION },
@@ -211,26 +226,22 @@ pipeline = Pipeline(
     id_function = calculate_item_id
   ),
   MoveFiles(),
-  ConditionalTask(lambda item: ("dailybooth_username" in item),
-    LimitConcurrent(NumberConfigValue(min=1, max=6, default="2", name="shared:upload_threads", title="Upload threads", description="The maximum number of concurrent uploads."),
-      CurlUpload(
-        ConfigInterpolation("http://tracker.archiveteam.org/dailybooth/upload/%s/", downloader),
-        ItemInterpolation("%(data_dir)s/%(warc_file_base)s.warc.gz")
+  ConditionalTask(lambda item: ("dailybooth_user_id" in item),
+    LimitConcurrent(NumberConfigValue(min=1, max=4, default="1", name="shared:rsync_threads", title="Rsync threads", description="The maximum number of concurrent uploads."),
+      RsyncUpload(
+        target = ConfigInterpolation("216.245.195.218::dailybooth/%s/", downloader),
+        target_source_path = ItemInterpolation("%(data_dir)s/"),
+        files = [
+          ItemInterpolation("%(data_dir)s/%(warc_file_base)s.warc.gz"),
+          ItemInterpolation("%(data_dir)s/%(warc_file_base)s.usernames.txt")
+        ],
+        extra_args = [
+          "--recursive",
+          "--partial",
+          "--partial-dir", ".rsync-tmp"
+        ]
       ),
     ),
-#   LimitConcurrent(NumberConfigValue(min=1, max=4, default="1", name="shared:rsync_threads", title="Rsync threads", description="The maximum number of concurrent uploads."),
-#     RsyncUpload(
-#       target = ConfigInterpolation("fos.textfiles.com::alardland/warrior/dailybooth/%s/", downloader),
-#       target_source_path = ItemInterpolation("%(data_dir)s/"),
-#       files = [
-#         ItemInterpolation("%(warc_file_base)s.warc.gz")
-#       ],
-#       extra_args = [
-#         "--partial",
-#         "--partial-dir", ".rsync-tmp"
-#       ]
-#     ),
-#   ),
   ),
   SendDoneToTracker(
     tracker_url = "http://tracker.archiveteam.org/dailybooth",
