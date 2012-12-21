@@ -25,7 +25,7 @@ if StrictVersion(seesaw.__version__) < StrictVersion("0.0.10"):
 
 
 USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27"
-VERSION = "20121221.01"
+VERSION = "20121221.02"
 
 class ConditionalTask(Task):
   def __init__(self, condition_function, inner_task):
@@ -182,7 +182,7 @@ project = Project(
 )
 
 pipeline = Pipeline(
-  ExternalProcess("User discovery", ["./discover-dailybooth.py"]),
+  ExternalProcess("User discovery", ["./discover-dailybooth-2.py"]),
   GetItemFromTracker("http://tracker.archiveteam.org/dailybooth", downloader, VERSION),
   GetIdForUsername(),
   PrepareDirectories(),

@@ -5,9 +5,13 @@ import re
 import time
 import urllib
 import sys
+import os
 
 from tornado import ioloop, httpclient, gen
 
+
+# kill the old version (didn't stop on errors)
+os.system('pkill -f discover-dailybooth.py')
 
 
 USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27"
