@@ -54,6 +54,7 @@ def next_from_queue():
         connect_timeout=10, request_timeout=30,
         follow_redirects=False,
         user_agent=USER_AGENT)
+    req.i = i
     ahttp_client.fetch(req, handle_request)
     running[0] = running[0] + 1
 
