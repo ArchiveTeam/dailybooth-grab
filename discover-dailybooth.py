@@ -15,7 +15,7 @@ http_client = httpclient.HTTPClient()
 ahttp_client = httpclient.AsyncHTTPClient()
 
 print "Loading task..."
-res = http_client.fetch("http://tracker.archiveteam.org:8126/request", method="POST", body="version=1")
+res = http_client.fetch("http://tracker.archiveteam.org:8126/request", method="POST", body="version=2")
 task = json.loads(res.body)
 # task = { "prefix": "10000", "usernames": ["xyz","api","charles"] }
 
@@ -29,7 +29,7 @@ print "Task %s" % prefix
 
 
 usernames_found = set()
-queue = [ i for i in range(0,100) ]
+queue = [ (5,i) for i in range(0,100) ]
 running = [ 0 ]
 
 def handle_request(response):
@@ -38,14 +38,15 @@ def handle_request(response):
     usernames_found.add(response.headers['Location'].split("/")[-1])
   elif response.code >= 500 and response.code <= 599:
     print "\nError %d" % response.code
-    # queue.append(response.request.i)
+    if response.request.i[0] > 0:
+      queue.append((response.request.i[0] - 1, response.request.i[1]))
 
   running[0] = running[0] - 1
   next_from_queue()
 
 def next_from_queue():
   if len(queue) > 0:
-    i = queue.pop()
+    tries, i = queue.pop()
     sys.stdout.write("\r%d  " % i)
     sys.stdout.flush()
 
@@ -54,7 +55,7 @@ def next_from_queue():
         connect_timeout=10, request_timeout=30,
         follow_redirects=False,
         user_agent=USER_AGENT)
-    req.i = i
+    req.i = (tries, i)
     ahttp_client.fetch(req, handle_request)
     running[0] = running[0] + 1
 
