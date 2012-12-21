@@ -38,7 +38,7 @@ def handle_request(response):
     usernames_found.add(response.headers['Location'].split("/")[-1])
   elif response.code >= 500 and response.code <= 599:
     print "\nError %d" % response.code
-    queue.append(response.request.i)
+    # queue.append(response.request.i)
 
   running[0] = running[0] - 1
   next_from_queue()
@@ -61,8 +61,8 @@ def next_from_queue():
   elif running[0] == 0:
     ioloop.IOLoop.instance().stop()
 
-next_from_queue()
-next_from_queue()
+# next_from_queue()
+# next_from_queue()
 next_from_queue()
 
 ioloop.IOLoop.instance().start()
