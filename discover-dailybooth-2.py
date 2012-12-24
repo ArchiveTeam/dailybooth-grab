@@ -67,7 +67,7 @@ def next_from_queue():
     ioloop.IOLoop.instance().stop()
 
 # next_from_queue()
-# next_from_queue()
+next_from_queue()
 next_from_queue()
 
 ioloop.IOLoop.instance().start()
