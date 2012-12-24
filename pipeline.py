@@ -25,7 +25,7 @@ if StrictVersion(seesaw.__version__) < StrictVersion("0.0.10"):
 
 
 USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27"
-VERSION = "20121221.02"
+VERSION = "20121224.01"
 
 class ConditionalTask(Task):
   def __init__(self, condition_function, inner_task):
@@ -182,71 +182,73 @@ project = Project(
 )
 
 pipeline = Pipeline(
-  ExternalProcess("User discovery", ["./discover-dailybooth-2.py"]),
-  GetItemFromTracker("http://tracker.archiveteam.org/dailybooth", downloader, VERSION),
-  GetIdForUsername(),
-  PrepareDirectories(),
-  ConditionalTask(lambda item: ("dailybooth_user_id" in item),
-    WgetDownload([ "./wget-lua",
-        "-U", USER_AGENT,
-        "-nv",
-        "-o", ItemInterpolation("%(item_dir)s/wget.log"),
-        "--no-check-certificate",
-        "--directory-prefix", ItemInterpolation("%(item_dir)s/files"),
-        "--force-directories",
-        "--adjust-extension",
-        "-e", "robots=off",
-        "--page-requisites", "--span-hosts",
-        "--lua-script", "dailybooth-noapi.lua",
-        "--reject-regex", "api.mixpanel.com|www.facebook.com|platform.twitter.com",
-        "--timeout", "60",
-        "--tries", "20",
-        "--waitretry", "5",
-        "--warc-file", ItemInterpolation("%(item_dir)s/%(warc_file_base)s"),
-        "--warc-header", "operator: Archive Team",
-        "--warc-header", "dailybooth-dld-script-version: " + VERSION,
-        "--warc-header", ItemInterpolation("dailybooth-user-id: %(dailybooth_user_id)s"),
-        "--warc-header", ItemInterpolation("dailybooth-username: %(item_name)s"),
-        ItemInterpolation("http://dailybooth.com/%(item_name)s")
-      ],
-      max_tries = 2,
-      accept_on_exit_code = [ 0, 4, 6, 8 ],
-    ),
-  ),
-  ConditionalTask(lambda item: ("dailybooth_user_id" in item),
-    ExternalProcess("ExtractUsernames",
-      ["./extract-usernames.py",
-       ItemInterpolation("%(item_dir)s/%(warc_file_base)s.warc.gz"),
-       ItemInterpolation("%(data_dir)s/%(warc_file_base)s.usernames.txt")])
-  ),
-  PrepareStatsForTracker(
-    defaults = { "downloader": downloader, "version": VERSION },
-    file_groups = {
-      "data": [ ItemInterpolation("%(item_dir)s/%(warc_file_base)s.warc.gz") ]
-    },
-    id_function = calculate_item_id
-  ),
-  MoveFiles(),
-  ConditionalTask(lambda item: ("dailybooth_user_id" in item),
-    LimitConcurrent(NumberConfigValue(min=1, max=4, default="1", name="shared:rsync_threads", title="Rsync threads", description="The maximum number of concurrent uploads."),
-      RsyncUpload(
-        target = ConfigInterpolation("216.245.195.218::dailybooth/%s/", downloader),
-        target_source_path = ItemInterpolation("%(data_dir)s/"),
-        files = [
-          ItemInterpolation("%(data_dir)s/%(warc_file_base)s.warc.gz"),
-          ItemInterpolation("%(data_dir)s/%(warc_file_base)s.usernames.txt")
-        ],
-        extra_args = [
-          "--recursive",
-          "--partial",
-          "--partial-dir", ".rsync-tmp"
-        ]
-      ),
-    ),
-  ),
-  SendDoneToTracker(
-    tracker_url = "http://tracker.archiveteam.org/dailybooth",
-    stats = ItemValue("stats")
-  )
+  ExternalProcess("User discovery 1", ["./discover-dailybooth-2.py"]),
+  ExternalProcess("User discovery 2", ["./discover-dailybooth-2.py"]),
+  ExternalProcess("User discovery 3", ["./discover-dailybooth-2.py"])
+# GetItemFromTracker("http://tracker.archiveteam.org/dailybooth", downloader, VERSION),
+# GetIdForUsername(),
+# PrepareDirectories(),
+# ConditionalTask(lambda item: ("dailybooth_user_id" in item),
+#   WgetDownload([ "./wget-lua",
+#       "-U", USER_AGENT,
+#       "-nv",
+#       "-o", ItemInterpolation("%(item_dir)s/wget.log"),
+#       "--no-check-certificate",
+#       "--directory-prefix", ItemInterpolation("%(item_dir)s/files"),
+#       "--force-directories",
+#       "--adjust-extension",
+#       "-e", "robots=off",
+#       "--page-requisites", "--span-hosts",
+#       "--lua-script", "dailybooth-noapi.lua",
+#       "--reject-regex", "api.mixpanel.com|www.facebook.com|platform.twitter.com",
+#       "--timeout", "60",
+#       "--tries", "20",
+#       "--waitretry", "5",
+#       "--warc-file", ItemInterpolation("%(item_dir)s/%(warc_file_base)s"),
+#       "--warc-header", "operator: Archive Team",
+#       "--warc-header", "dailybooth-dld-script-version: " + VERSION,
+#       "--warc-header", ItemInterpolation("dailybooth-user-id: %(dailybooth_user_id)s"),
+#       "--warc-header", ItemInterpolation("dailybooth-username: %(item_name)s"),
+#       ItemInterpolation("http://dailybooth.com/%(item_name)s")
+#     ],
+#     max_tries = 2,
+#     accept_on_exit_code = [ 0, 4, 6, 8 ],
+#   ),
+# ),
+# ConditionalTask(lambda item: ("dailybooth_user_id" in item),
+#   ExternalProcess("ExtractUsernames",
+#     ["./extract-usernames.py",
+#      ItemInterpolation("%(item_dir)s/%(warc_file_base)s.warc.gz"),
+#      ItemInterpolation("%(data_dir)s/%(warc_file_base)s.usernames.txt")])
+# ),
+# PrepareStatsForTracker(
+#   defaults = { "downloader": downloader, "version": VERSION },
+#   file_groups = {
+#     "data": [ ItemInterpolation("%(item_dir)s/%(warc_file_base)s.warc.gz") ]
+#   },
+#   id_function = calculate_item_id
+# ),
+# MoveFiles(),
+# ConditionalTask(lambda item: ("dailybooth_user_id" in item),
+#   LimitConcurrent(NumberConfigValue(min=1, max=4, default="1", name="shared:rsync_threads", title="Rsync threads", description="The maximum number of concurrent uploads."),
+#     RsyncUpload(
+#       target = ConfigInterpolation("216.245.195.218::dailybooth/%s/", downloader),
+#       target_source_path = ItemInterpolation("%(data_dir)s/"),
+#       files = [
+#         ItemInterpolation("%(data_dir)s/%(warc_file_base)s.warc.gz"),
+#         ItemInterpolation("%(data_dir)s/%(warc_file_base)s.usernames.txt")
+#       ],
+#       extra_args = [
+#         "--recursive",
+#         "--partial",
+#         "--partial-dir", ".rsync-tmp"
+#       ]
+#     ),
+#   ),
+# ),
+# SendDoneToTracker(
+#   tracker_url = "http://tracker.archiveteam.org/dailybooth",
+#   stats = ItemValue("stats")
+# )
 )
 
